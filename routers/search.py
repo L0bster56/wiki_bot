@@ -1,6 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
+from pyexpat.errors import messages
 
 from keybords.search import get_article_kb, get_article_link_kb
 from keybords.setings import get_back_kb
@@ -44,5 +45,7 @@ async def article_handler(cb: CallbackQuery, state: FSMContext):
     await state.update_data(article=cb.data)
     data = await state.get_data()
     print(data)
-
+    await cb.message.delete()
     await cb.message.answer(text,reply_markup=get_article_link_kb(url))
+    await cb.message.answer(text,reply_markup=get_article_link_kb(url))
+    await state.clear()
