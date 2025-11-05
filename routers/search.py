@@ -2,7 +2,10 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
+from keybords.search import get_article_kb, get_article_link_kb
 from keybords.setings import get_back_kb
+from servises.res import get_wiki_kb
+from servises.search import get_wikw_results
 from states.search import SearchForm
 
 router = Router()
@@ -17,23 +20,29 @@ async def search_kb(message: Message, state: FSMContext):
 @router.message(SearchForm.query, F.text)
 async def get_text_search_kb(message: Message, state: FSMContext):
     query = message.text
-    await state.update_data(query=query)
+
+    data = get_wikw_results(query)
+    if len(data) == 0:
+        await message.answer("Напишите по другому")
+        await state.set_state(SearchForm.query)
+        return None
+
+    text = "Выберите статью "
+    for i in range(len(data)):
+        text += f"\n<b>{i+1}</b>. {data[i].get('title')}, "
 
 
-    data = [
-        {"pageId": "1234"},
-        {"pageId": "1"}
-    ]
-
-    await message.answer("Выбор статьи:", reply_markup=get_back_kb(data))
+    await message.answer(f"{text}", reply_markup=get_article_kb(data))
     await state.set_state(SearchForm.article)
 
 
-@router.callback_query(SearchForm.article, F.data.func(lambda x: x.isdigit()))
-async def callback_search_kb(callback: CallbackQuery, state: FSMContext):
-    await state.update_data(article=callback.data)
+@router.callback_query(F.data.startswith("article"),SearchForm.article)
+async def article_handler(cb: CallbackQuery, state: FSMContext):
+    pageid_1 = cb.data.split(".")[1]
+    pageid = int(pageid_1)
+    text,url = get_wiki_kb(pageid, "ru")
+    await state.update_data(article=cb.data)
     data = await state.get_data()
-
     print(data)
-    await callback.message.answer(f"Вы выбрали статью ID: {callback.data}")
 
+    await cb.message.answer(text,reply_markup=get_article_link_kb(url))
